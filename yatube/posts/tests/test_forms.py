@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from posts.models import Comment, Follow, Group, Post
+from posts.models import Comment, Group, Post
 
 
 User = get_user_model()
