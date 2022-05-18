@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %} 
+  Профиль пользователя {{ author.username }}
+{% endblock %}
+{% block content %}
+  <div class="container py-5" "mb-5">
+{% comment %}Обрати внимение добавлен класс "mb-5" {% endcomment %}
+    <h1>Все посты пользователя {{ author }} </h1>
+    <h3>Всего постов: {{ count_post_author }} </h3>
+    {% if following and authore != user %}
+    <a
+      class="btn btn-lg btn-light"
+      href="{% url 'posts:profile_unfollow' author.username %}" role="button"
+    >
+      Отписаться
+    </a>
+    {% elif author != user %}
+      <a
+        class="btn btn-lg btn-primary"
+        href="{% url 'posts:profile_follow' author.username %}" role="button"
+      >
+        Подписаться
+      </a>
+    {% else %}
+    <a></a>
+    {% endif %} 
+    {% for post in page_obj %} 
+      {% include 'posts/includes/post_card.html' %}
+    {% endfor %}      
+  </div>
+  {% include 'posts/includes/paginator.html' %}
+{% endblock %}
