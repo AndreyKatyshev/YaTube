@@ -68,10 +68,10 @@ def profile(request, username):
     author = get_object_or_404(User, username=username)
     post_list = author.posts.select_related('group')
     count_post_author = len(post_list)
-    if request.user.is_authenticated:
-        if author != request.user:
-            following = Follow.objects.filter(
-                user=request.user, author=author).exists()
+    # if request.user.is_authenticated:
+    if author != request.user and request.user.is_authenticated:
+        following = Follow.objects.filter(
+            user=request.user, author=author).exists()
     else:
         following = False
     context = {
