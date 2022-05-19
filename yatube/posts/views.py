@@ -40,11 +40,10 @@ def profile_follow(request, username):
 
 @login_required
 def profile_unfollow(request, username):
-    if username != request.user.username:
-        Follow.objects.get(
-            user=request.user,
-            author__username=username,
-        ).delete()
+    Follow.objects.filter(
+        user=request.user,
+        author__username=username,
+    ).delete()
     return redirect('posts:profile', username=username)
 
 
@@ -76,9 +75,6 @@ def profile(request, username):
 def post_detail(request, post_id):
     post = get_object_or_404(Post, pk=post_id)
     form = CommentForm(request.POST or None,)
-    # comments = Comment.objects.filter(post_id=post_id)
-    # comments = post.comments.all()
-    # Эти две строчки идентичны же, только надо Comment импортировать?
     context = {
         'post': post,
         'form': form,

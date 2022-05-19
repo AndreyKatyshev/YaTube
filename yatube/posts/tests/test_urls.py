@@ -71,7 +71,14 @@ class StaticURLTests(TestCase):
                 redirect_login = reverse('users:login')
                 response = self.client.get(
                     hard_url, args=args, follow=True)
-                if address in ['posts:post_create', 'posts:post_edit']:
+                if address in [
+                    'posts:post_create',
+                    'posts:post_edit',
+                    'posts:profile_follow',
+                    'posts:profile_unfollow',
+                    'posts:follow_index',
+                    'posts:add_comment',
+                ]:
                     reverse_var = reverse(address, args=args)
                     target_url = (
                         f'{redirect_login}?{REDIRECT_FIELD_NAME}={reverse_var}'
@@ -79,6 +86,7 @@ class StaticURLTests(TestCase):
                     self.assertRedirects(
                         response, target_url)
                 else:
+                    response = self.client.get(hard_url, args=args)
                     self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_available_authorized_user(self):
@@ -88,7 +96,7 @@ class StaticURLTests(TestCase):
             with self.subTest(address=address):
                 response = self.authorized_client_no_author.get(
                     hard_url, args=args)
-                if address in ['posts:post_edit']:
+                if address in ['posts:post_edit', 'posts:add_comment']:
                     self.assertRedirects(response, reverse(
                         'posts:post_detail', args=args))
                 elif address in [
@@ -97,9 +105,6 @@ class StaticURLTests(TestCase):
                 ]:
                     self.assertRedirects(response, reverse(
                         'posts:profile', args=args))
-                elif address == 'posts:add_comment':
-                    self.assertRedirects(response, reverse(
-                        'posts:post_detail', args=args))
                 else:
                     self.assertEqual(response.status_code, HTTPStatus.OK)
 

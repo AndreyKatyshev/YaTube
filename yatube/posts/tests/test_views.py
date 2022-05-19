@@ -17,7 +17,6 @@ class VievFunctionTest(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(username='Test_username')
-        cls.user_without_following = User.objects.create_user(username='Vasya')
         cls.user_author = User.objects.create_user(username='Test_author_name')
         cls.group = Group.objects.create(
             title='Тестовая_группа',
@@ -58,9 +57,6 @@ class VievFunctionTest(TestCase):
         cache.clear()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
-        self.authorized_client_without_following = Client()
-        self.authorized_client_without_following.force_login(
-            self.user_without_following)
         self.authorized_client_author = Client()
         self.authorized_client_author.force_login(
             self.user_author)
@@ -158,7 +154,7 @@ class VievFunctionTest(TestCase):
         """Новая запись пользователя появляется в ленте тех,
         кто на него подписан и не появляется в ленте тех,
         кто не подписан."""
-        response_before = self.authorized_client_without_following.get(
+        response_before = self.authorized_client_author.get(
             reverse('posts:follow_index'))
         self.post_1 = Post.objects.create(
             text='text_for_follower_with_love',
@@ -168,9 +164,41 @@ class VievFunctionTest(TestCase):
             reverse('posts:follow_index'))
         object = response.context['page_obj'][0]
         self.assertEqual(object.text, 'text_for_follower_with_love')
-        response_after = self.authorized_client_without_following.get(
+        response_after = self.authorized_client_author.get(
             reverse('posts:follow_index'))
         self.assertEqual(response_before.content, response_after.content)
+        # Логика теста такова:
+        # юсер уже подписан на автора(в сет ап классе)
+        # в этом Тест-кейсе автор пишет пост_1,
+        # юзер заходит на страницу подписок там созданный автором пост
+        # всё хорошо.
+        # затем юзер который ни на кого не подписан(автор)
+        # заходит в свои подписки
+        # а там ровно то, что и было до публикации
+        # (запрос "до" равен запросу "после"),
+        # то есть на чужих страницах подписок, пост не появился
+        # а у тех кто подписан - появился!!! профит.
+
+        # я не придумал как проверить
+        # что на странице где не должен появляться пост он не появляетя,
+        # поэтому придумал два запроса "До" и "После".
+        # Сейчас я немного оптимизировал тест,
+        # сразу не дошло что можно автора использовать,
+        # и я создавал ещё одного юзера без подписок. ¯\_(ツ)_/¯
+    def test_follof_process_2(self):
+        """Авторизованный пользователь
+        может подписываться на других пользователей
+        и удалять их из подписок."""
+        self.authorized_client.get(
+            reverse('posts:profile_unfollow', args=(
+                self.user_author.username,)))
+        self.assertEqual(Follow.objects.count(), 0)
+        self.authorized_client.get(
+            reverse('posts:profile_follow', args=(
+                self.user_author.username,)))
+        self.assertEqual(Follow.objects.count(), 1)
+        # Тут я написал ещё один тест-кейс (перечитал задание)
+        # собственно формулировка задания теперь докстринг к тесту.
 
 
 class VievPaginatorTest(TestCase):

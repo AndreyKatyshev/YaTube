@@ -4,7 +4,6 @@
 {% endblock %}
 {% block content %}
   <div class="container py-5" "mb-5">
-{% comment %}Обрати внимение добавлен класс "mb-5" {% endcomment %}
     <h1>Все посты пользователя {{ author }} </h1>
     <h3>Всего постов: {{ count_post_author }} </h3>
     {% if following and authore != user %}
