@@ -7,7 +7,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from time import sleep
 
-from posts.models import Group, Post
+from posts.models import Follow, Group, Post
 
 User = get_user_model()
 
@@ -17,6 +17,7 @@ class VievFunctionTest(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(username='Test_username')
+        cls.user_without_following = User.objects.create_user(username='Vasya')
         cls.user_author = User.objects.create_user(username='Test_author_name')
         cls.group = Group.objects.create(
             title='Тестовая_группа',
@@ -41,52 +42,39 @@ class VievFunctionTest(TestCase):
             content=cls.small_gif,
             content_type='image/gif'
         )
-        cls.COUNT_POST_FOR_TEST = 13
-        for post_number in range(cls.COUNT_POST_FOR_TEST):
-            sleep(0.01)
-            cls.post = Post.objects.create(
-                text=f'Test text пост номер {post_number+1}',
-                author=cls.user_author,
-                group=cls.group,
-                image=cls.uploaded,
-            )
+        cls.follow = Follow.objects.create(
+            user=cls.user,
+            author=cls.user_author,
+        )
+        cls.COUNT_POST_FOR_TEST = 1
+        cls.post = Post.objects.create(
+            text='Test text пост',
+            author=cls.user_author,
+            group=cls.group,
+            image=cls.uploaded,
+        )
 
     def setUp(self):
         cache.clear()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
+        self.authorized_client_without_following = Client()
+        self.authorized_client_without_following.force_login(
+            self.user_without_following)
         self.authorized_client_author = Client()
         self.authorized_client_author.force_login(
             self.user_author)
 
     def checking_context(self, response, bool_var=False):
         if bool_var is True:
-            object = response.context['page_obj']
+            object = response.context['post']
         else:
             object = response.context['page_obj'][0]
         self.assertEqual(object.author, self.user_author)
-        self.assertEqual(object.text, 'Test text пост номер 13')
+        self.assertEqual(object.text, 'Test text пост')
         self.assertEqual(object.group, self.group)
         self.assertEqual(object.pub_date, self.post.pub_date)
-        self.assertEqual(object.image, self.post.image)
-
-    # def test_pages_uses_correct_template(self):
-    #     templates_pages_names_list = (
-    #         # ('posts:index', None, 'posts/index.html'),
-    #         ('posts:group_posts', (
-    #             self.group.slug,), 'posts/group_list.html'),
-    #         # ('posts:profile', (
-    #         #     self.post.author.username,), 'posts/profile.html'),
-    #         ('posts:post_detail', (self.post.id,), 'posts/post_detail.html'),
-    #         ('posts:post_create', None, 'posts/create_post.html'),
-    #         ('posts:post_edit', (self.post.id,), 'posts/create_post.html'),
-    #     )
-    #     for address, args, template in templates_pages_names_list:
-    #         with self.subTest(address=address):
-    #             response = self.authorized_client_author.get(
-    #                 reverse(address, args=args))
-    #             self.assertTemplateUsed(response, template)
-    # обнаружил что полностью аналогичный тест написан в test_urls
+        self.assertContains(response, '<img', 2)
 
     def test_pages_accept_correct_context_index(self):
         """проверка правильности передаваемого
@@ -141,6 +129,78 @@ class VievFunctionTest(TestCase):
                         object = response.context.get(
                             'form').fields.get(value)
                 self.assertIsInstance(object, expected)
+
+    def test_cashe(self):
+        """тестирует кэш"""
+        posts_count = Post.objects.count()
+        post_1 = Post.objects.create(
+            text='Test_text',
+            author=self.user_author,
+            group=self.group
+        )
+        self.assertEqual(Post.objects.count(), posts_count + 1)
+        response_1 = self.authorized_client_author.get(reverse('posts:index'))
+        post_1.delete()
+        response_2 = self.authorized_client_author.get(reverse('posts:index'))
+        self.assertEqual(response_1.content, response_2.content)
+        self.assertEqual(Post.objects.count(), posts_count)
+        cache.clear()
+        response_3 = self.authorized_client_author.get(reverse('posts:index'))
+        self.assertNotEqual(response_1.content, response_3.content)
+
+    def test_pages_accept_correct_context_follow_index(self):
+        """проверка правильности передаваемого
+        словаря context функции follow_index."""
+        response = self.authorized_client.get(reverse('posts:follow_index'))
+        self.checking_context(response)
+
+    def test_following_process(self):
+        """Новая запись пользователя появляется в ленте тех,
+        кто на него подписан и не появляется в ленте тех,
+        кто не подписан."""
+        response_before = self.authorized_client_without_following.get(
+            reverse('posts:follow_index'))
+        self.post_1 = Post.objects.create(
+            text='text_for_follower_with_love',
+            author=self.user_author,
+            group=self.group,)
+        response = self.authorized_client.get(
+            reverse('posts:follow_index'))
+        object = response.context['page_obj'][0]
+        self.assertEqual(object.text, 'text_for_follower_with_love')
+        response_after = self.authorized_client_without_following.get(
+            reverse('posts:follow_index'))
+        self.assertEqual(response_before.content, response_after.content)
+
+
+class VievPaginatorTest(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create_user(username='Test_username')
+        cls.user_author = User.objects.create_user(
+            username='Test_author_name')
+        cls.group = Group.objects.create(
+            title='Тестовая_группа',
+            slug='test_slug',
+            description='Тестовое_описание',
+        )
+        cls.COUNT_POST_FOR_TEST = 13
+        for post_number in range(cls.COUNT_POST_FOR_TEST):
+            sleep(0.01)
+            cls.post = Post.objects.create(
+                text=f'Test text пост номер {post_number+1}',
+                author=cls.user_author,
+                group=cls.group,
+            )
+
+    def setUp(self):
+        cache.clear()
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.user)
+        self.authorized_client_author = Client()
+        self.authorized_client_author.force_login(
+            self.user_author)
 
     def test_pagonator(self):
         pages_list = (

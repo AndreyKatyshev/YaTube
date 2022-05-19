@@ -8,12 +8,12 @@
     <h1>Все посты пользователя {{ author }} </h1>
     <h3>Всего постов: {{ count_post_author }} </h3>
     {% if following and authore != user %}
-    <a
-      class="btn btn-lg btn-light"
-      href="{% url 'posts:profile_unfollow' author.username %}" role="button"
-    >
-      Отписаться
-    </a>
+      <a
+        class="btn btn-lg btn-light"
+        href="{% url 'posts:profile_unfollow' author.username %}" role="button"
+      >
+        Отписаться
+      </a>
     {% elif author != user %}
       <a
         class="btn btn-lg btn-primary"

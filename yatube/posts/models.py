@@ -82,8 +82,6 @@ class Comment(models.Model):
     created = models.DateTimeField(
         'Дата и время публикации',
         auto_now_add=True,
-        # auto_now=True,
-        # как установить время не разобрался
     )
 
     class Meta:
@@ -106,11 +104,10 @@ class Follow(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='following',
-        verbose_name='Звезда'
+        verbose_name='Автор'
     )
 
     class Meta:
-        # ordering = ('-created',)
         verbose_name = 'подписка'
         verbose_name_plural = 'подписки'
 

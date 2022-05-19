@@ -37,15 +37,23 @@ class StaticURLTests(TestCase):
             ('posts:index', None, '/'),
             ('posts:group_posts', (
                 self.group.slug,), f'/group/{self.group.slug}/'),
-            # ('posts:profile', (
-            #     self.post.author.username,),
-            #     f'/profile/{self.post.author.username}/'),
-            # я изменил функцию profile и теперь тест на срабатывает
+            ('posts:profile', (
+                self.user_author.username,),
+                f'/profile/{self.user_author.username}/'),
             ('posts:post_detail', (
                 self.post.id,), f'/posts/{self.post.id}/'),
             ('posts:post_create', None, '/create/'),
             ('posts:post_edit', (
                 self.post.id,), f'/posts/{self.post.id}/edit/'),
+            ('posts:follow_index', None, '/follow/',),
+            ('posts:profile_follow', (
+                self.user_author.username,),
+                f'/profile/{self.user_author.username}/follow/',),
+            ('posts:profile_unfollow', (
+                self.user_author.username,),
+                f'/profile/{self.user_author.username}/unfollow/',),
+            ('posts:add_comment', (
+                self.post.id,), f'/posts/{self.post.id}/comment/'),
         )
 
     def test_reverse(self):
@@ -61,8 +69,6 @@ class StaticURLTests(TestCase):
         for address, args, hard_url in self.general_tuple:
             with self.subTest(address=address):
                 redirect_login = reverse('users:login')
-                # redirect_login = '/auth/login/'
-                # закоменченная строчка идентична той что над ней
                 response = self.client.get(
                     hard_url, args=args, follow=True)
                 if address in ['posts:post_create', 'posts:post_edit']:
@@ -85,6 +91,15 @@ class StaticURLTests(TestCase):
                 if address in ['posts:post_edit']:
                     self.assertRedirects(response, reverse(
                         'posts:post_detail', args=args))
+                elif address in [
+                    'posts:profile_follow',
+                    'posts:profile_unfollow',
+                ]:
+                    self.assertRedirects(response, reverse(
+                        'posts:profile', args=args))
+                elif address == 'posts:add_comment':
+                    self.assertRedirects(response, reverse(
+                        'posts:post_detail', args=args))
                 else:
                     self.assertEqual(response.status_code, HTTPStatus.OK)
 
@@ -94,7 +109,17 @@ class StaticURLTests(TestCase):
             with self.subTest(address=address):
                 response = self.authorized_client_author.get(
                     hard_url, args=args)
-                self.assertEqual(response.status_code, HTTPStatus.OK)
+                if address in [
+                    'posts:profile_follow',
+                    'posts:profile_unfollow',
+                ]:
+                    self.assertRedirects(response, reverse(
+                        'posts:profile', args=args))
+                elif address == 'posts:add_comment':
+                    self.assertRedirects(response, reverse(
+                        'posts:post_detail', args=args))
+                else:
+                    self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_unexisting_url(self):
         """Проверка на переход по несуществующему адресу
@@ -116,6 +141,7 @@ class StaticURLTests(TestCase):
             ('posts:post_create', None, 'posts/create_post.html'),
             ('posts:post_edit', (
                 self.post.id,), 'posts/create_post.html'),
+            ('posts:follow_index', None, 'posts/follow.html'),
         )
         for address, args, template in templates_url_names:
             with self.subTest(address=address):

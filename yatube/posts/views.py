@@ -30,9 +30,7 @@ def follow_index(request):
 @login_required
 def profile_follow(request, username):
     author = get_object_or_404(User, username=username)
-    follower = Follow.objects.filter(
-        user=request.user, author=author).exists()
-    if username != request.user.username and not follower:
+    if username != request.user.username:
         Follow.objects.get_or_create(
             user=request.user,
             author=author,
@@ -42,15 +40,11 @@ def profile_follow(request, username):
 
 @login_required
 def profile_unfollow(request, username):
-    author = get_object_or_404(User, username=username)
-    follower = Follow.objects.filter(
-        user=request.user, author=author).exists()
-    if author != request.user and follower:
-        following = Follow.objects.get(
+    if username != request.user.username:
+        Follow.objects.get(
             user=request.user,
-            author=author,
-        )
-        following.delete()
+            author__username=username,
+        ).delete()
     return redirect('posts:profile', username=username)
 
 
@@ -68,12 +62,8 @@ def profile(request, username):
     author = get_object_or_404(User, username=username)
     post_list = author.posts.select_related('group')
     count_post_author = len(post_list)
-    # if request.user.is_authenticated:
-    if author != request.user and request.user.is_authenticated:
-        following = Follow.objects.filter(
-            user=request.user, author=author).exists()
-    else:
-        following = False
+    following = request.user.is_authenticated and Follow.objects.filter(
+        user=request.user, author=author).exists()
     context = {
         'author': author,
         'page_obj': paginator(request, post_list),
@@ -84,17 +74,15 @@ def profile(request, username):
 
 
 def post_detail(request, post_id):
-    page_obj = Post.objects.get(pk=post_id)
+    post = get_object_or_404(Post, pk=post_id)
     form = CommentForm(request.POST or None,)
-    # comments = Comment.objects.filter(pk=post_id)
-    # comments = Comment.objects.all()
-    # comments = Comment.objects.get(pk=post_id)
-    # почему не так?
-    comments = page_obj.comments.all()
+    # comments = Comment.objects.filter(post_id=post_id)
+    # comments = post.comments.all()
+    # Эти две строчки идентичны же, только надо Comment импортировать?
     context = {
-        'page_obj': page_obj,
+        'post': post,
         'form': form,
-        'comments': comments,
+        'comments': post.comments.all(),
     }
     return render(request, 'posts/post_detail.html', context)
 

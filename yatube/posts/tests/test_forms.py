@@ -2,7 +2,6 @@ import shutil
 import tempfile
 from http import HTTPStatus
 from django.conf import settings
-from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
@@ -127,14 +126,10 @@ class PostCreateFormTests(TestCase):
         self.assertEqual(
             first_object.text, 'комментарий авторизованного пользователя')
         self.assertEqual(first_object.author, self.user_author)
-        # Не уверен что задание требовало такой проверки
-        # попробовал другую:
-        # response_2 = self.authorized_client_author.get(
-        #     reverse('posts:post_detail', args=(self.post.id,)))
-        # self.assertEqual(
-        #     response_2.context['form'].text, form_data['text'])
-        # пытался достать комментарий из страницы пост_детейл
-        # и не преуспел
+        response_2 = self.authorized_client_author.get(
+            reverse('posts:post_detail', args=(self.post.id,)))
+        self.assertEqual(
+            response_2.context['comments'].first().text, form_data['text'])
 
     def test_comment_not_for_guest_client(self):
         """Проверяет недоступность оставления комментария
@@ -177,29 +172,3 @@ class PostCreateFormTests(TestCase):
         response_2 = self.authorized_client_author.get(
             reverse('posts:group_posts', args=(self.group.slug,)))
         self.assertEqual(len(response_2.context['page_obj']), 0)
-
-    def test_cashe(self):
-        """тестирует кэш"""
-        posts_count = Post.objects.count()
-        post_1 = Post.objects.create(
-            text='Test_text',
-            author=self.user_author,
-            group=self.group
-        )
-        self.assertEqual(Post.objects.count(), posts_count + 1)
-        response_1 = self.authorized_client_author.get(reverse('posts:index'))
-        post_1.delete()
-        response_2 = self.authorized_client_author.get(reverse('posts:index'))
-        self.assertEqual(response_1.content, response_2.content)
-        self.assertEqual(Post.objects.count(), posts_count)
-        cache.clear()
-        response_3 = self.authorized_client_author.get(reverse('posts:index'))
-        self.assertNotEqual(response_1.content, response_3.content)
-
-    # def test_follow(self):
-    #     """Авторизованный пользователь может подписываться
-    #     на других пользователей и удалять их из подписок."""
-    #     response = self.authorized_client_author.post(
-    #         reverse('posts:follow', args=(self.post.id,)),
-    #         data=new_form_data,
-    #         follow=True
