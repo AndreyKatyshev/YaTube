@@ -1,3 +1,11 @@
-# hw05_final
+# YaTube - «Социальная сеть блогеров»
 
-[![CI](https://github.com/yandex-praktikum/hw05_final/actions/workflows/python-app.yml/badge.svg?branch=master)](https://github.com/yandex-praktikum/hw05_final/actions/workflows/python-app.yml)
+Сайт реализован на Django
+Функционал сайта - поражает. Поражает отсутствием лишних деталей.
+Регистрация пользователя, возможность добавлять и удалять свои посты(с картинками),
+возможность подписываться и отписываться от других авторов,
+общая лента постов, и лента постов от тех на кого ты подписан.
+
+
+
+
